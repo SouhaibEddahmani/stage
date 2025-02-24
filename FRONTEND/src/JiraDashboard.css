@@ -1,0 +1,162 @@
+/* Global Styles */
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal overflow */
+}
+
+/* Dashboard Container */
+.jira-dashboard-container {
+  max-width: 100%;
+  padding: 0;
+  margin: 0 auto;
+}
+
+.dashboard-content {
+  max-width: 1200px; /* Adjust this value as needed */
+  margin: 0 auto;
+  padding: 0 15px; /* Add some padding for smaller screens */
+}
+
+/* Ensure no horizontal overflow */
+.row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.col, .col-md, .col-lg {
+  padding-left: 15px; /* Add padding to columns */
+  padding-right: 15px; /* Add padding to columns */
+}
+
+/* Card Styling */
+.jira-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 20px;
+}
+
+.jira-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Visualization Cards */
+.visualization-card {
+  margin-bottom: 20px; /* Add margin to the bottom of each card */
+}
+
+.visualization-card .card-body {
+  padding: 20px; /* Add padding inside the card body */
+}
+
+/* Card Header */
+.card-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.issue-key {
+  display: flex;
+  align-items: center;
+}
+
+/* Status Badge */
+.status-badge {
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+}
+
+/* Detail Items */
+.detail-item {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.detail-item strong {
+  color: #333;
+}
+
+/* Icons */
+.icon {
+  color: #6c757d;
+}
+
+/* Hover Effect */
+.hover-effect:hover {
+  background-color: #f8f9fa;
+}
+
+/* Spinner */
+.spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+/* Custom colors */
+:root {
+  --primary-color: #FF6F00; /* Deep orange */
+  --secondary-color: #FFA726; /* Lighter orange */
+  --accent-color: #FFC107; /* Yellow */
+  --background-color: #F5F5F5; /* Light gray */
+  --text-color: #333333; /* Dark gray */
+}
+
+/* Apply custom colors to buttons */
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+}
+
+/* Apply custom colors to badges */
+.badge-warning {
+  background-color: var(--accent-color);
+  color: var(--text-color);
+}
+/* Container for logo and title */
+.logo-title-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Logo image styling */
+.dashboard-logo {
+  max-width: 150px; /* Adjust the width to your preference */
+  height: auto;
+  margin-bottom: 15px;
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Title styling */
+.dashboard-title {
+  font-size: 2.5rem; /* Adjust the font size as needed */
+  font-weight: bold;
+  color: #333; /* Dark color for contrast */
+  text-align: center;
+  margin: 0;
+  padding: 10px;
+  transition: color 0.3s ease;
+}
+
+/* Add hover effect on the logo */
+.dashboard-logo:hover {
+  transform: scale(1.1);
+}
+
+/* Add hover effect on title */
+.dashboard-title:hover {
+  color: #007bff; /* Change title color on hover */
+}
