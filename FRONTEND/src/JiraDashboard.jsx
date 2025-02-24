@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useMemo } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Card, Button, Spinner, Badge, Collapse, Container, Row, Col, Form } from "react-bootstrap";
@@ -13,8 +13,10 @@ ChartJS.register(
 );
 
 const JiraDashboard = () => {
-  const [jiraData, setJiraData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [jiraData, setJiraData] = useState([]); // All fetched tickets
+  const [displayedTickets, setDisplayedTickets] = useState([]); // Tickets currently displayed
+  const [loading, setLoading] = useState(true); // Initial loading state
+  const [fetchingMore, setFetchingMore] = useState(false); // Loading state for additional tickets
   const [error, setError] = useState(null);
   const [openIssue, setOpenIssue] = useState(null);
   const [showTickets, setShowTickets] = useState(false);
@@ -25,229 +27,189 @@ const JiraDashboard = () => {
     priority: "",
   });
 
-  const fetchJiraData = async () => {
+  const fetchJiraData = async (startAt = 0, maxResults = 100) => {
     try {
-      let allIssues = [];
-      let startAt = 0;
-      let total = null;
-
-      // Loop to fetch data in pages
-      while (total === null || startAt < total) {
-        const response = await axios.get("http://localhost:8000/api/fetch-jira-data", {
-          params: {
-            startAt: startAt,
-            maxResults: 100, // You can adjust this as needed
-          },
-        });
-
-        const { issues, total: fetchedTotal } = response.data;
-
-        if (total === null) total = fetchedTotal; // Set total only once
-
-        allIssues = [...allIssues, ...issues]; // Accumulate issues
-        startAt += issues.length; // Move pagination forward
-
-        console.log(`Fetched ${issues.length} issues, total: ${total}, startAt: ${startAt}`);
+      const response = await axios.get("http://localhost:8000/api/fetch-jira-data", {
+        params: { startAt, maxResults },
+      });
+  
+      const { issues, total: fetchedTotal } = response.data;
+  
+      // Avoid duplicating issues based on issue ID
+      setJiraData((prev) => {
+        const existingIds = new Set(prev.map(issue => issue.id)); // Assuming issue.id is unique
+        return [...prev, ...issues.filter(issue => !existingIds.has(issue.id))];
+      });
+  
+      setDisplayedTickets((prev) => {
+        const existingIds = new Set(prev.map(issue => issue.id));
+        return [...prev, ...issues.filter(issue => !existingIds.has(issue.id))];
+      });
+  
+      // If there are more tickets to fetch, fetch the next chunk
+      if (startAt + maxResults < fetchedTotal) {
+        setFetchingMore(true); // Show loading spinner for additional tickets
+        fetchJiraData(startAt + maxResults, maxResults);
+      } else {
+        setLoading(false); // All tickets fetched
+        setFetchingMore(false);
       }
-
-      setJiraData(allIssues);
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching Jira data:", error);
       setError("Error fetching Jira data.");
       setLoading(false);
+      setFetchingMore(false);
     }
   };
+  
 
+  // Fetch data on initial render
   useEffect(() => {
     fetchJiraData();
-    const interval = setInterval(fetchJiraData, 120000); // Fetch data every 120s
-    return () => clearInterval(interval);
   }, []);
 
-  // Calculate data for visualizations
-  const statusCounts = jiraData.reduce((acc, issue) => {
+  // Calculate data for visualizations (using all fetched tickets)
+  const statusCounts = useMemo(() => jiraData.reduce((acc, issue) => {
     const status = issue.fields?.status?.name || "N/A";
     acc[status] = (acc[status] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [jiraData]);
 
-  const creationDates = jiraData.map((issue) => new Date(issue.fields?.created).toLocaleDateString());
-  const dateCounts = creationDates.reduce((acc, date) => {
+  const creationDates = useMemo(() => jiraData.map((issue) => new Date(issue.fields?.created).toLocaleDateString()), [jiraData]);
+  const dateCounts = useMemo(() => creationDates.reduce((acc, date) => {
     acc[date] = (acc[date] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [creationDates]);
 
-  const priorityCounts = jiraData.reduce((acc, issue) => {
+  const priorityCounts = useMemo(() => jiraData.reduce((acc, issue) => {
     const priority = issue.fields?.priority?.name || "N/A";
     acc[priority] = (acc[priority] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [jiraData]);
 
-  const assigneeCounts = jiraData.reduce((acc, issue) => {
+  const assigneeCounts = useMemo(() => jiraData.reduce((acc, issue) => {
     const assignee = issue.fields?.assignee?.displayName || "Unassigned";
     acc[assignee] = (acc[assignee] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [jiraData]);
 
-  const issueTypeCounts = jiraData.reduce((acc, issue) => {
+  const issueTypeCounts = useMemo(() => jiraData.reduce((acc, issue) => {
     const type = issue.fields?.issuetype?.name || "N/A";
     acc[type] = (acc[type] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [jiraData]);
 
-  // Calculate Resolution Time Distribution
-  const resolutionTimeData = jiraData.map((issue) => {
+  const resolutionTimeData = useMemo(() => jiraData.map((issue) => {
     const created = new Date(issue.fields?.created);
     const resolved = new Date(issue.fields?.resolutiondate || new Date());
-    const resolutionTime = (resolved - created) / (1000 * 60 * 60 * 24); // Convert to days
-    return resolutionTime;
-  });
+    return (resolved - created) / (1000 * 60 * 60 * 24); // Convert to days
+  }), [jiraData]);
 
-  const resolutionTimeBuckets = resolutionTimeData.reduce((acc, time) => {
+  const resolutionTimeBuckets = useMemo(() => resolutionTimeData.reduce((acc, time) => {
     if (time <= 1) acc["0-1 days"] = (acc["0-1 days"] || 0) + 1;
     else if (time <= 7) acc["1-7 days"] = (acc["1-7 days"] || 0) + 1;
     else if (time <= 30) acc["7-30 days"] = (acc["7-30 days"] || 0) + 1;
     else acc[">30 days"] = (acc[">30 days"] || 0) + 1;
     return acc;
-  }, {});
+  }, {}), [resolutionTimeData]);
 
   // Simulate Sprint Burndown Data
-  const sprintDuration = 14; // 14-day sprint
-  const totalWork = 100; // Total story points or tasks
-  const burndownData = Array.from({ length: sprintDuration }, (_, i) => {
-    const day = i + 1;
-    const remainingWork = totalWork - (day * (totalWork / sprintDuration)); // Linear burndown
-    return { day, remainingWork: Math.max(0, remainingWork) }; // Ensure remaining work doesn't go negative
-  });
+  const sprintBurndownData = useMemo(() => {
+    const sprintDuration = 14; // 14-day sprint
+    const totalWork = 100; // Total story points or tasks
+    return Array.from({ length: sprintDuration }, (_, i) => {
+      const day = i + 1;
+      const remainingWork = totalWork - (day * (totalWork / sprintDuration)); // Linear burndown
+      return { day, remainingWork: Math.max(0, remainingWork) }; // Ensure remaining work doesn't go negative
+    });
+  }, []);
 
-  // Data for Sprint Burndown Chart (Line Chart)
-  const sprintBurndownData = {
-    labels: burndownData.map((data) => `Day ${data.day}`),
-    datasets: [
-      {
-        label: "Remaining Work",
-        data: burndownData.map((data) => data.remainingWork),
-        borderColor: "#36A2EB",
-        fill: false,
-      },
-    ],
-  };
-
-  // Data for Pie Chart (Status Distribution)
-  const statusData = {
+  // Data for visualizations (unchanged)
+  const statusData = useMemo(() => ({
     labels: Object.keys(statusCounts),
-    datasets: [
-      {
-        data: Object.values(statusCounts),
-        backgroundColor: [
-          "#FF6384", // Red
-          "#36A2EB", // Blue
-          "#FFCE56", // Yellow
-          "#4BC0C0", // Teal
-          "#FF9F40", // Orange
-          "#9966FF", // Purple
-        ],
-      },
-    ],
-  };
+    datasets: [{
+      data: Object.values(statusCounts),
+      backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#FF9F40", "#9966FF"],
+    }],
+  }), [statusCounts]);
 
-  // Data for Line Chart (Issue Creation Over Time)
-  const lineData = {
+  const lineData = useMemo(() => ({
     labels: Object.keys(dateCounts),
-    datasets: [
-      {
-        label: "Issues Created",
-        data: Object.values(dateCounts),
-        borderColor: "#36A2EB",
-        fill: false,
-      },
-    ],
-  };
+    datasets: [{
+      label: "Issues Created",
+      data: Object.values(dateCounts),
+      borderColor: "#36A2EB",
+      fill: false,
+    }],
+  }), [dateCounts]);
 
-  // Data for Bar Chart (Priority Distribution)
-  const barData = {
+  const barData = useMemo(() => ({
     labels: Object.keys(priorityCounts),
-    datasets: [
-      {
-        label: "Number of Issues",
-        data: Object.values(priorityCounts),
-        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
-      },
-    ],
-  };
+    datasets: [{
+      label: "Number of Issues",
+      data: Object.values(priorityCounts),
+      backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+    }],
+  }), [priorityCounts]);
 
-  // Data for Scatter Plot (Time Spent vs. Estimated Time)
-  const scatterData = {
-    datasets: [
-      {
-        label: "Time Spent vs. Estimated",
-        data: jiraData.map((issue) => ({
-          x: issue.fields?.timetracking?.timeSpentSeconds || 0,
-          y: issue.fields?.timetracking?.timeEstimateSeconds || 0,
-        })),
-        backgroundColor: "#36A2EB",
-      },
-    ],
-  };
+  const scatterData = useMemo(() => ({
+    datasets: [{
+      label: "Time Spent vs. Estimated",
+      data: jiraData.map((issue) => ({
+        x: issue.fields?.timetracking?.timeSpentSeconds || 0,
+        y: issue.fields?.timetracking?.timeEstimateSeconds || 0,
+      })),
+      backgroundColor: "#36A2EB",
+    }],
+  }), [jiraData]);
 
-  // Data for Horizontal Bar Chart (Assignee Workload)
-  const assigneeData = {
+  const assigneeData = useMemo(() => ({
     labels: Object.keys(assigneeCounts),
-    datasets: [
-      {
-        label: "Number of Issues",
-        data: Object.values(assigneeCounts),
-        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
-      },
-    ],
-  };
+    datasets: [{
+      label: "Number of Issues",
+      data: Object.values(assigneeCounts),
+      backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+    }],
+  }), [assigneeCounts]);
 
-  // Data for Doughnut Chart (Issue Types Distribution)
-  const issueTypeData = {
+  const issueTypeData = useMemo(() => ({
     labels: Object.keys(issueTypeCounts),
-    datasets: [
-      {
-        data: Object.values(issueTypeCounts),
-        backgroundColor: [
-          "#4BC0C0", // Teal
-          "#FF6384", // Red
-          "#36A2EB", // Blue
-          "#FFCE56", // Yellow
-          "#FF9F40", // Orange
-          "#9966FF", // Purple
-        ],
-      },
-    ],
-  };
+    datasets: [{
+      data: Object.values(issueTypeCounts),
+      backgroundColor: ["#4BC0C0", "#FF6384", "#36A2EB", "#FFCE56", "#FF9F40", "#9966FF"],
+    }],
+  }), [issueTypeCounts]);
 
-  // Data for Resolution Time Distribution (Bar Chart)
-  const resolutionTimeChartData = {
+  const resolutionTimeChartData = useMemo(() => ({
     labels: Object.keys(resolutionTimeBuckets),
-    datasets: [
-      {
-        label: "Resolution Time (Days)",
-        data: Object.values(resolutionTimeBuckets),
-        backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
-      },
-    ],
-  };
+    datasets: [{
+      label: "Resolution Time (Days)",
+      data: Object.values(resolutionTimeBuckets),
+      backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+    }],
+  }), [resolutionTimeBuckets]);
 
-  // Filter the tickets based on the filter criteria
-  const filteredTickets = jiraData.filter((issue) => {
+  const sprintBurndownChartData = useMemo(() => ({
+    labels: sprintBurndownData.map((data) => `Day ${data.day}`),
+    datasets: [{
+      label: "Remaining Work",
+      data: sprintBurndownData.map((data) => data.remainingWork),
+      borderColor: "#36A2EB",
+      fill: false,
+    }],
+  }), [sprintBurndownData]);
+
+  // Filter the tickets based on the filter criteria (using displayedTickets)
+  const filteredTickets = useMemo(() => displayedTickets.filter((issue) => {
     return (
       (filters.projectName === "" || issue.fields?.project?.name?.toLowerCase().includes(filters.projectName.toLowerCase())) &&
       (filters.issueType === "" || issue.fields?.issuetype?.name?.toLowerCase().includes(filters.issueType.toLowerCase())) &&
       (filters.status === "" || issue.fields?.status?.name?.toLowerCase().includes(filters.status.toLowerCase())) &&
       (filters.priority === "" || issue.fields?.priority?.name?.toLowerCase().includes(filters.priority.toLowerCase()))
     );
-  });
+  }), [displayedTickets, filters]);
 
-  if (loading) return (
-    <div className="spinner">
-      <Spinner animation="border" className="loading-spinner" />
-    </div>
-  );
+ 
 
   if (error) return <div className="error-message">{error}</div>;
 
@@ -384,7 +346,7 @@ const JiraDashboard = () => {
               <Card.Body>
                 <Card.Title>Sprint Burndown</Card.Title>
                 <Line
-                  data={sprintBurndownData}
+                  data={sprintBurndownChartData}
                   options={{
                     scales: {
                       y: {
