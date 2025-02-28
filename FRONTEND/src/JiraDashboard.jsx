@@ -1,4 +1,4 @@
-import React, { useState, useEffect , useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Card, Button, Spinner, Badge, Collapse, Container, Row, Col, Form } from "react-bootstrap";
@@ -29,28 +29,37 @@ const JiraDashboard = () => {
 
   const fetchJiraData = async (startAt = 0, maxResults = 100) => {
     try {
+      console.log(`Fetching data: startAt=${startAt}, maxResults=${maxResults}`); // Log the fetch parameters
+  
       const response = await axios.get("http://localhost:8000/api/fetch-jira-data", {
         params: { startAt, maxResults },
       });
   
       const { issues, total: fetchedTotal } = response.data;
   
+      console.log(`Fetched ${issues.length} issues out of ${fetchedTotal} total issues.`); // Log the fetched data
+  
       // Avoid duplicating issues based on issue ID
       setJiraData((prev) => {
         const existingIds = new Set(prev.map(issue => issue.id)); // Assuming issue.id is unique
-        return [...prev, ...issues.filter(issue => !existingIds.has(issue.id))];
+        const newIssues = issues.filter(issue => !existingIds.has(issue.id));
+        console.log(`Adding ${newIssues.length} new issues to the state.`); // Log the number of new issues
+        return [...prev, ...newIssues];
       });
   
       setDisplayedTickets((prev) => {
         const existingIds = new Set(prev.map(issue => issue.id));
-        return [...prev, ...issues.filter(issue => !existingIds.has(issue.id))];
+        const newIssues = issues.filter(issue => !existingIds.has(issue.id));
+        return [...prev, ...newIssues];
       });
   
       // If there are more tickets to fetch, fetch the next chunk
       if (startAt + maxResults < fetchedTotal) {
+        console.log(`Fetching more issues...`); // Log that more issues are being fetched
         setFetchingMore(true); // Show loading spinner for additional tickets
         fetchJiraData(startAt + maxResults, maxResults);
       } else {
+        console.log(`All issues fetched. Total issues: ${jiraData.length + issues.length}`); // Log completion
         setLoading(false); // All tickets fetched
         setFetchingMore(false);
       }
@@ -61,11 +70,18 @@ const JiraDashboard = () => {
       setFetchingMore(false);
     }
   };
-  
 
-  // Fetch data on initial render
+  // Fetch data on initial render and set up auto-refresh
   useEffect(() => {
-    fetchJiraData();
+    fetchJiraData(); // Initial fetch
+
+    const intervalId = setInterval(() => {
+      fetchJiraData(); // Auto-refresh every 30 seconds
+    }, 15000);
+
+    return () => {
+      clearInterval(intervalId); // Cleanup interval on unmount
+    };
   }, []);
 
   // Calculate data for visualizations (using all fetched tickets)
@@ -208,8 +224,6 @@ const JiraDashboard = () => {
       (filters.priority === "" || issue.fields?.priority?.name?.toLowerCase().includes(filters.priority.toLowerCase()))
     );
   }), [displayedTickets, filters]);
-
- 
 
   if (error) return <div className="error-message">{error}</div>;
 
