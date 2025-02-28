@@ -1,2 +1,30 @@
+                   FOR THE FRONTEND 
 1-Install Node js using this link : https://nodejs.org/fr
-2-
+2-repository url ssh : git@gitlab.com:SouhaibEddahmani/stage.git
+3-repository url https : https://gitlab.com/SouhaibEddahmani/stage.git
+4-cloning command : git clone <repository-url>
+                    cd <project-folder>
+                            Dependencies 
+(make sure you are in the frontend folder before installing the following dependencies ) : cd FRONTEND
+5-Run the following command to install all dependencies listed in package.json : npm install
+6-install React Bootstrap (UI components) : npm install react-bootstrap bootstrap
+7-install Axios (for API calls) : npm install axios
+8-install Chart.js and React Chart.js (for visualizations) : npm install chart.js react-chartjs-2
+9-install react icons (for icons) : npm install react-icons
+                    FOR THE BACKEND
+Its a little bit complicated so i recommande whatching this video : https://www.youtube.com/watch?v=2qgS_MCvDfk&t=460s
+                            Dependencies 
+(make sure you are in the frontend folder before installing the following dependencies ) : cd jira-dashboard
+1-Install Laravel Sanctum : composer require laravel/sanctum
+2-Publish Sanctum Configuration : php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
+3-Install pusher (for real time updates ) : composer require pusher/pusher-php-server
+after installing the backend and the frontend you should follow these steps so the code can run correctly :
+u will start by openening xampp and starting the server , open xampps look for Apache and MySQL and start them.
+Then click on admin (Mysql) this will take u to a localhost website (where u have the databses) then u do the following :
+1-Create a database and name it database (the same name in the env file)
+2-Open the terminal and navigate to the backend folder : cd jira-dashboard
+3-Run the following command to start the server : php artisan serve and click on the url given to you in terminal
+4-Open a new terminal and navigate to the frontend folder : cd FRONTEND 
+5-Run the following command to start the frontend : npm run dev and you click on the url given to you in terminal
+
+If I have missed any step or if you have any question please let me know , or you can use an ai to help you fix your problemes
